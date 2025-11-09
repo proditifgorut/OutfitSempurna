@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { questions } from './lib/data';
-import { Selections, Outfit } from './lib/types';
+import { Selections, Outfit, Mood, Occasion, Vibe } from './lib/types';
 import { cn, generateOutfitPrompt, generateOutfitDescription } from './lib/utils';
+import Header from './components/Header';
 import QuestionCard from './components/QuestionCard';
 import LoadingSpinner from './components/LoadingSpinner';
 import ResultCard from './components/ResultCard';
@@ -19,7 +20,7 @@ function App() {
   });
   const [outfit, setOutfit] = useState<Outfit | null>(null);
 
-  const handleSelect = (value: any) => {
+  const handleSelect = (value: Mood | Occasion | Vibe) => {
     const currentQuestion = questions[currentStep];
     const newSelections = { ...selections, [currentQuestion.id]: value };
     setSelections(newSelections);
@@ -28,20 +29,17 @@ function App() {
       setCurrentStep(currentStep + 1);
     } else {
       setAppState('loading');
-      // Simulate AI thinking process
       setTimeout(() => {
         const prompt = generateOutfitPrompt(newSelections);
         const { description, colorPalette } = generateOutfitDescription(newSelections);
         const newOutfit: Outfit = {
-          // Using Unsplash as a placeholder for an AI image generator
-          // The prompt is URL-encoded to handle spaces and special characters
           imageUrl: `https://source.unsplash.com/800x1200/?${encodeURIComponent(prompt)}`,
           description,
           colorPalette
         };
         setOutfit(newOutfit);
         setAppState('result');
-      }, 3000);
+      }, 3500);
     }
   };
 
@@ -53,31 +51,35 @@ function App() {
   };
 
   const backgroundClass = useMemo(() => {
-    if (selections.mood) {
-      return `bg-mood-${selections.mood.toLowerCase()}`;
+    if (appState !== 'questioning' || !selections.mood) {
+      return 'bg-gray-50';
     }
-    return 'bg-gray-100';
-  }, [selections.mood]);
+    return `bg-mood-${selections.mood.toLowerCase()}`;
+  }, [selections.mood, appState]);
 
   return (
-    <main className={cn('min-h-screen w-full flex items-center justify-center p-4 transition-colors duration-1000', backgroundClass)}>
-      <AnimatePresence mode="wait">
-        {appState === 'questioning' && (
-          <QuestionCard
-            key={currentStep}
-            question={questions[currentStep]}
-            onSelect={handleSelect}
-          />
-        )}
-        {appState === 'loading' && <LoadingSpinner />}
-        {appState === 'result' && outfit && (
-          <ResultCard outfit={outfit} onTryAgain={handleTryAgain} />
-        )}
-      </AnimatePresence>
-      <footer className="absolute bottom-4 text-center w-full text-gray-500 text-sm">
+    <div className={cn('min-h-screen w-full flex flex-col items-center justify-center p-4 transition-colors duration-1000', backgroundClass)}>
+      <Header />
+      <main className="flex-grow flex items-center justify-center w-full">
+        <AnimatePresence mode="wait">
+          {appState === 'questioning' && (
+            <QuestionCard
+              key={currentStep}
+              question={questions[currentStep]}
+              onSelect={handleSelect}
+              progress={(currentStep + 1) / questions.length}
+            />
+          )}
+          {appState === 'loading' && <LoadingSpinner />}
+          {appState === 'result' && outfit && (
+            <ResultCard outfit={outfit} onTryAgain={handleTryAgain} />
+          )}
+        </AnimatePresence>
+      </main>
+      <footer className="w-full text-center py-4 text-gray-500 text-sm">
         <p>Powered by Dualite Alpha &copy; 2025</p>
       </footer>
-    </main>
+    </div>
   );
 }
 
